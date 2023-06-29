@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_null_comparison, avoid_print, unused_element
+// ignore_for_file: unnecessary_null_comparison, avoid_print, unused_element, prefer_const_constructors
 
 import "package:flutter/material.dart";
 import 'number.dart';
@@ -11,10 +11,10 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  var history = [];
+  List<String> history = [];
   double resultHistory = 0;
 
-  addToHistory(String input) {
+  void addToHistory(String input) {
     setState(() {
       if (history.isEmpty &&
           !(input == "+" || input == "-" || input == "X" || input == "/")) {
@@ -40,51 +40,91 @@ class _HomeState extends State<Home> {
         }
       }
     });
+    print(history);
   }
 
-  calculate() {
-    var result = 0.0;
-    var num1 = 0.0;
-    var num2 = 0.0;
-    var op = "";
-    for (var i = 0; i < history.length; i++) {
-      if (i == 0) {
-        num1 = double.parse(history[i]);
-        result = num1;
-      } else {
-        if (i % 2 == 1) {
-          op = history[i];
-        } else {
-          num2 = double.parse(history[i]);
-          if (op == "+") {
-            result = num1 + num2;
-          } else if (op == "-") {
-            result = num1 - num2;
-          } else if (op == "X") {
-            result = num1 * num2;
-          } else if (op == "/") {
-            result = num1 / num2;
+  num calculate(List<String> expression) {
+    try {
+      bool isNumeric(String str) {
+        if (str == null) {
+          return false;
+        }
+        return double.tryParse(str) != null;
+      }
+
+      List<num> numbers = [];
+      List<String> operators = [];
+
+      for (String token in expression) {
+        if (isNumeric(token)) {
+          numbers.add(double.parse(token));
+        } else if (token == '+' || token == '-') {
+          while (operators.isNotEmpty &&
+              (operators.last == '+' ||
+                  operators.last == '-' ||
+                  operators.last == 'X' ||
+                  operators.last == '/')) {
+            _applyOperator(numbers, operators);
           }
-          num1 = result;
+          operators.add(token);
+        } else if (token == 'X' || token == '/') {
+          while (operators.isNotEmpty &&
+              (operators.last == 'X' || operators.last == '/')) {
+            _applyOperator(numbers, operators);
+          }
+          operators.add(token);
+        } else {
+          throw FormatException('Invalid expression: Unknown token $token');
         }
       }
+
+      while (operators.isNotEmpty) {
+        _applyOperator(numbers, operators);
+      }
+
+      if (numbers.length != 1) {
+        throw FormatException('Invalid expression: Extra operands');
+      }
+
+      return numbers.first;
+    } catch (e) {
+      print(e.toString());
+      return double.parse(expression.first);
     }
-    return result.toString();
   }
 
-  clearHistory(String input) {
+  void _applyOperator(List<num> numbers, List<String> operators) {
+    String operator = operators.removeLast();
+    num operand2 = numbers.removeLast();
+    num operand1 = numbers.removeLast();
+
+    if (operator == '+') {
+      numbers.add(operand1 + operand2);
+    } else if (operator == '-') {
+      numbers.add(operand1 - operand2);
+    } else if (operator == 'X') {
+      numbers.add(operand1 * operand2);
+    } else if (operator == '/') {
+      if (operand2 == 0) {
+        throw FormatException('Invalid expression: Division by zero');
+      }
+      numbers.add(operand1 / operand2);
+    }
+  }
+
+  void clearHistory(String input) {
     setState(() {
       history = [];
     });
   }
 
-  clearLast(String input) {
+  void clearLast(String input) {
     setState(() {
       history.removeLast();
     });
   }
 
-  historyArrayToString() {
+  String historyArrayToString() {
     String historyString = "";
     for (var i = 0; i < history.length; i++) {
       historyString = historyString + history[i] + " ";
@@ -119,8 +159,8 @@ class _HomeState extends State<Home> {
             height: 60,
             width: double.infinity,
             child: Text(
-              calculate(),
-              style: Theme.of(context).textTheme.headline4,
+              history.isEmpty ? "" : calculate(history).toString(),
+              style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.end,
             ),
             margin: const EdgeInsets.only(right: 50),
